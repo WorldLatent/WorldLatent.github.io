@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WorldLatent: A Unified 4D Latent Space for World Perception and Generation</title>
+  <meta name="description" content="WorldLatent fuses RGB video, depth and camera rays into one 4D latent space, so a single generative model performs 4D perception, text-to-4D generation and depth-conditioned editing.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="WorldLatent: A Unified 4D Latent Space for World Perception and Generation">
+  <meta property="og:description" content="One latent space, one model, one shared multi-task training loop for 4D perception, generation and editing.">
+  <!-- Link previews need an absolute URL: update it if the page is not served from worldlatent.github.io -->
+  <meta property="og:image" content="https://worldlatent.github.io/static/images/teaser_poster.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="data:,">
+  <!-- Self-contained: no CDNs, web fonts or trackers. -->
+  <style>
+    :root {
+      --text: #16181d;
+      --muted: #5b6170;
+      --faint: #868c98;
+      --line: #e3e5ea;
+      --panel: #f5f6f8;
+      --bg: #ffffff;
+      --accent: #0b7285;
+      --frame: #0e1014;
+      --radius: 12px;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+    body {
+      margin: 0; font-family: var(--sans); color: var(--text); background: var(--bg);
+      line-height: 1.55; -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+    a { color: var(--accent); }
+    sub, sup { line-height: 0; }  /* keep line spacing even around z<sub>4d</sub> */
+
+    /* ---------- header */
+    .hero { text-align: center; padding: 60px 0 8px; }
+    .hero h1 {
+      margin: 0 auto; max-width: 960px; font-size: clamp(28px, 3.6vw, 44px);
+      line-height: 1.16; font-weight: 750; letter-spacing: -.015em;
+    }
+    .hero h1 .name { color: var(--accent); }
+    .authors {
+      list-style: none; margin: 22px auto 0; padding: 0; max-width: 900px;
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 22px; font-size: 18px;
+    }
+    .authors a { color: var(--accent); text-decoration: none; }
+    .authors a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    .authors sup, .affil sup { font-size: .62em; margin-left: 1px; color: var(--muted); }
+    .affils {
+      margin: 16px 0 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+      gap: 10px 34px; font-size: 16px; color: var(--muted);
+    }
+    .affil { display: inline-flex; align-items: center; gap: 8px; }
+    .affil img { display: block; height: 40px; width: auto; }
+    .affil img.google { height: 27px; margin-top: 3px; }
+    .footnote { margin: 10px 0 0; font-size: 13px; color: var(--faint); display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 18px; }
+    .links { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 22px 0 0; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 8px; padding: 9px 20px; border-radius: 999px;
+      font-size: 15px; font-weight: 600; text-decoration: none; color: #fff; background: var(--text);
+      border: 1px solid var(--text); transition: transform .12s, background .12s;
+    }
+    a.pill:hover { transform: translateY(-1px); background: #2c313b; }
+    .pill svg { width: 17px; height: 17px; flex: none; }
+    .pill.is-soon { color: var(--muted); background: #fff; border-color: var(--line); cursor: default; }
+    .pill.is-soon small { font-weight: 500; font-size: 12.5px; }
+    .teaser-video { margin: 34px auto 0; max-width: 1040px; }
+    .teaser-video video {
+      display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: #000;
+      border-radius: 12px; box-shadow: 0 10px 34px rgba(16, 24, 40, .16);
+    }
+    .teaser-video figcaption { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
+
+    /* ---------- sticky toolbar */
+    .toolbar {
+      position: sticky; top: 0; z-index: 20; border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, .93); backdrop-filter: saturate(1.4) blur(8px);
+      -webkit-backdrop-filter: saturate(1.4) blur(8px);
+    }
+    .toolbar .wrap { display: flex; align-items: center; gap: 16px; min-height: 56px; }
+    .toolbar nav { display: flex; gap: 2px; flex: 1; overflow-x: auto; }
+    .toolbar nav a {
+      color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500;
+      padding: 6px 10px; border-radius: 8px; white-space: nowrap;
+    }
+    .toolbar nav a:hover { background: var(--panel); color: var(--text); }
+    .controls { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+    .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .seg button {
+      border: 0; border-right: 1px solid var(--line); background: #fff; padding: 5px 10px;
+      font: inherit; font-size: 13px; color: var(--muted); cursor: pointer;
+    }
+    .seg button:last-child { border-right: 0; }
+    .seg button:hover { background: var(--panel); }
+    .seg button[aria-pressed="true"] { background: var(--text); color: #fff; }
+    .btn {
+      border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 5px 11px;
+      font: inherit; font-size: 13px; color: var(--text); cursor: pointer; min-width: 78px;
+    }
+    .btn:hover { background: var(--panel); }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* ---------- sections */
+    section { padding: 52px 0 28px; border-top: 1px solid var(--line); }
+    section#abstract { border-top: 0; }
+    .sec-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .sec-num { font-size: 14px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+    .sec-head h2, section > h2 { margin: 0; font-size: 26px; letter-spacing: -.01em; }
+    .lead { margin: 10px 0 24px; font-size: 15.5px; color: var(--muted); }
+    .lead strong { color: var(--text); font-weight: 600; }
+    .sub-head { margin: 40px 0 0; font-size: 19px; }
+    .sub-head + .lead { margin-top: 6px; }
+    .tag {
+      display: inline-block; padding: 2px 9px; font-size: 12px; font-weight: 600; color: var(--muted);
+      background: var(--panel); border: 1px solid var(--line); border-radius: 999px; white-space: nowrap;
+    }
+
+    /* ---------- abstract + method figure */
+    .abstract { margin: 14px 0 0; font-size: 16.5px; line-height: 1.65; color: #2a2e37; }
+    .paper-fig { margin: 6px 0 6px; }
+    .paper-fig img { display: block; width: 100%; height: auto; border-radius: 8px; }
+
+    /* ---------- results overview */
+    .tasks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 18px; }
+    .task {
+      display: block; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius);
+      color: inherit; text-decoration: none; transition: border-color .15s, box-shadow .15s;
+    }
+    .task:hover { border-color: #c5c9d3; box-shadow: 0 2px 12px rgba(16, 24, 40, .06); }
+    .task .k { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+    .task h3 { margin: 4px 0 6px; font-size: 17px; }
+    .task p { margin: 0; font-size: 14px; color: var(--muted); }
+    .task .io { margin-top: 10px; font-size: 13px; color: var(--text); }
+    .hint { margin: 18px 0 0; font-size: 14px; color: var(--muted); }
+
+    /* ---------- example cards */
+    .example {
+      margin: 0 0 22px; padding: 18px 20px 20px; background: #fff;
+      border: 1px solid var(--line); border-radius: var(--radius);
+    }
+    .example-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      flex-wrap: wrap; margin-bottom: 14px;
+    }
+    .example-head h3 { margin: 0; font-size: 17px; font-weight: 650; }
+    .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .note { margin: 14px 0 0; font-size: 13.5px; color: var(--muted); }
+
+    .row { display: grid; gap: 14px; }
+    .row.cols-1 { grid-template-columns: 1fr; }
+    .row.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .row.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .row.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    /* outputs row: same column width as a 3-column row, centred when fewer than 3 */
+    .row.centered { display: flex; flex-wrap: wrap; justify-content: center; }
+    .row.centered > * { flex: 0 1 calc((100% - 28px) / 3); min-width: 0; }
+
+    .clip { margin: 0; min-width: 0; }
+    .clip figcaption { margin: 0 0 6px; font-size: 13px; font-weight: 600; line-height: 1.3; color: var(--text); }
+    .clip.is-ours figcaption { color: var(--accent); }
+    .frame { position: relative; overflow: hidden; background: var(--frame); border-radius: 8px; }
+    .frame video {
+      display: block; width: 100%; height: auto; aspect-ratio: auto 1 / 1;
+      object-fit: contain; cursor: zoom-in;
+    }
+    .clip-wide .frame { background: none; }
+    .clip-wide video {
+      width: auto; max-width: 100%; max-height: 76vh; margin: 0 auto;
+      aspect-ratio: auto 1280 / 870; border-radius: 8px; background: var(--frame);
+    }
+    .frame.is-missing { background: none; }
+    .missing {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+      aspect-ratio: 1 / 1; padding: 12px; text-align: center; word-break: break-all;
+      font-size: 13px; color: #b4232a; background: #fff5f5; border: 2px dashed #e5484d; border-radius: 8px;
+    }
+    .clip-wide .missing { aspect-ratio: 1280 / 870; }
+    .missing code { font-size: 12px; }
+
+    /* re-rendering */
+    .flow {
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      margin: 18px 0 16px; font-size: 14px; font-weight: 500; color: var(--muted);
+    }
+    .flow::before, .flow::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+    .flow .arrow { font-size: 18px; line-height: 1; color: var(--text); }
+
+    .prompt {
+      margin: 10px 0 0; padding: 10px 12px; font-size: 13.5px; line-height: 1.55; color: #3a3f4b;
+      background: var(--panel); border-radius: 8px;
+    }
+    .prompt-label {
+      display: block; margin-bottom: 6px; font-size: 12px; font-weight: 700;
+      letter-spacing: .06em; text-transform: uppercase; color: var(--faint);
+    }
+    .prompt-side { margin: 0; align-self: start; }
+    .prompt-side p { margin: 0; }
+
+    /* generation */
+    .gen-body { display: grid; grid-template-columns: minmax(220px, 1fr) 3fr; gap: 18px; align-items: start; }
+
+    /* latent decomposition: row labels aligned with the bands of one grid video */
+    .decomp-grid { display: grid; grid-template-columns: 190px minmax(0, 1fr); column-gap: 16px; row-gap: 6px; max-width: 1020px; margin: 0 auto; }
+    .decomp-grid.no-rows { grid-template-columns: minmax(0, 1fr); }
+    .decomp-cols { display: grid; text-align: center; font-size: 13px; font-weight: 600; }
+    .decomp-rows { display: grid; }
+    .decomp-row { display: flex; flex-direction: column; justify-content: center; align-items: flex-end; text-align: right; gap: 2px; padding: 4px 0; border-right: 2px solid var(--line); padding-right: 12px; margin: 3px 0; }
+    .decomp-row .rn { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+    .decomp-row .rt { font-size: 14px; font-weight: 650; line-height: 1.3; }
+    .decomp-row .rd { font-size: 13px; color: var(--muted); }
+    .clip-decomp video { aspect-ratio: auto 4 / 3; }
+
+    /* perception tabs */
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
+    .tab {
+      display: flex; flex-direction: column; align-items: flex-start; min-width: 124px; padding: 8px 14px;
+      font: inherit; text-align: left; background: #fff; border: 1px solid var(--line);
+      border-radius: 10px; cursor: pointer;
+    }
+    .tab:hover { background: var(--panel); }
+    .tab .tab-name { font-size: 15px; font-weight: 650; color: var(--text); }
+    .tab .tab-meta { font-size: 12px; color: var(--faint); }
+    .tab[aria-selected="true"] { border-color: var(--text); box-shadow: inset 0 0 0 1px var(--text); }
+
+    /* ---------- lightbox */
+    #lightbox {
+      position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+      padding: 24px; background: rgba(10, 12, 16, .88);
+    }
+    #lightbox[hidden] { display: none; }
+    .lb-inner { position: relative; text-align: center; }
+    .lb-inner video { display: block; margin: 0 auto; max-width: 94vw; max-height: 84vh; background: #000; border-radius: 8px; }
+    .lb-cap { margin: 10px 0 0; font-size: 14px; color: #d7dae0; }
+    .lb-close {
+      position: absolute; top: -14px; right: -14px; width: 36px; height: 36px; border: 0; border-radius: 50%;
+      font-size: 22px; line-height: 1; color: #111; background: #fff; cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .3);
+    }
+    body.lb-open { overflow: hidden; }
+
+    /* ---------- footer */
+    footer { margin-top: 30px; padding: 28px 0 40px; border-top: 1px solid var(--line); font-size: 13px; color: var(--faint); text-align: center; }
+
+    @media (max-width: 1100px) {
+      .tasks { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 920px) {
+      .tasks { grid-template-columns: 1fr; }
+      .decomp-grid { grid-template-columns: minmax(0, 1fr); }
+      .decomp-corner { display: none; }
+      .decomp-rows { grid-template-rows: none !important; gap: 6px; order: 2; }
+      .decomp-row { flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: flex-start; text-align: left; gap: 8px; border-right: 0; padding: 0; margin: 0; }
+      .gen-body { grid-template-columns: 1fr; }
+      .row.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .controls .label { display: none; }
+    }
+    @media (max-width: 640px) {
+      .wrap { padding: 0 14px; }
+      .hero { padding: 40px 0 4px; }
+      .authors { font-size: 16px; gap: 2px 16px; }
+      .affil img { height: 32px; }
+      .affil img.google { height: 22px; }
+      .toolbar nav { display: none; }
+      .toolbar .wrap { justify-content: flex-end; }
+      .example { padding: 14px; }
+      .row.cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .row.centered > * { flex-basis: calc((100% - 14px) / 2); }
+    }
+  </style>
+</head>
+<body>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <h1><span class="name">WorldLatent</span>: A Unified 4D Latent Space for World Perception and Generation</h1>
+
+    <ul class="authors">
+      <li><a href="https://codingrex.github.io/" target="_blank" rel="noopener">Jingxi Chen</a><sup>1,2*</sup></li>
+      <li><a href="https://issaccyj.github.io/" target="_blank" rel="noopener">Yujia Chen</a><sup>2</sup></li>
+      <li><a href="https://robotics.umd.edu/clark/faculty/1168/Cornelia-Ferm%C3%BCller" target="_blank" rel="noopener">Cornelia Ferm&uuml;ller</a><sup>1</sup></li>
+      <li><a href="https://scholar.google.com/citations?user=7QmEsOwAAAAJ&amp;hl=en" target="_blank" rel="noopener">Yiannis Aloimonos</a><sup>1</sup></li>
+      <li><a href="https://l2ior.github.io/" target="_blank" rel="noopener">Wen-Sheng Chu</a><sup>2&dagger;</sup></li>
+      <li><a href="https://dutran.github.io/" target="_blank" rel="noopener">Du Tran</a><sup>2&dagger;</sup></li>
+    </ul>
+    <div class="affils">
+      <span class="affil"><sup>1</sup><img src="static/images/University_of_Maryland_seal.svg" width="40" height="40" alt="">University of Maryland, College Park</span>
+      <span class="affil"><sup>2</sup><img class="google" src="static/images/google_logo.png" width="79" height="27" alt="Google"></span>
+    </div>
+    <p class="footnote"><span><sup>*</sup>Work done during Jingxi Chen&rsquo;s internship at Google.</span><span><sup>&dagger;</sup>Joint last authors.</span></p>
+
+    <!-- When the arXiv page is live, replace the <span> below with:
+         <a class="pill" href="https://arxiv.org/abs/XXXX.XXXXX"> ...icon... arXiv</a> -->
+    <div class="links">
+      <span class="pill is-soon" aria-disabled="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>
+        arXiv <small>(coming soon)</small>
+      </span>
+    </div>
+
+    <figure class="teaser-video" id="video">
+      <video controls preload="metadata" playsinline poster="static/images/teaser_poster.jpg"
+             aria-label="WorldLatent overview video with narration">
+        <source src="static/videos/teaser/worldlatent_teaser.mp4" type="video/mp4">
+      </video>
+      <figcaption>Overview video (1:36, with narration)</figcaption>
+    </figure>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="wrap">
+    <nav aria-label="Sections">
+      <a href="#abstract">Abstract</a>
+      <a href="#method">Method</a>
+      <a href="#results">Video Results</a>
+      <a href="#perception">Perception</a>
+      <a href="#rerender">Re-rendering</a>
+      <a href="#generation">Generation</a>
+      <a href="#decomposition">Decomposition</a>
+    </nav>
+    <div class="controls">
+      <span class="label">Speed</span>
+      <div class="seg" role="group" aria-label="Playback speed of the result videos">
+        <button type="button" data-speed="0.25" aria-pressed="false">0.25&times;</button>
+        <button type="button" data-speed="0.5" aria-pressed="false">0.5&times;</button>
+        <button type="button" data-speed="1" aria-pressed="true">1&times;</button>
+      </div>
+      <button type="button" class="btn" id="toggle-play" aria-pressed="false">Pause all</button>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <!-- ===================================================== ABSTRACT -->
+  <section id="abstract">
+    <h2>Abstract</h2>
+    <p class="abstract">
+      Generative Pre-Training (GPT) represents a profound milestone in natural language processing, serving as the
+      foundation for most of today&rsquo;s state-of-the-art large language models. By casting diverse understanding and
+      generation problems into a shared token representation, GPT enables a single architecture and unified optimization
+      loop to master heterogeneous tasks across massive corpora, giving rise to powerful foundation models for natural
+      language. In contrast, 4D spatiotemporal vision lacks a common representational protocol: perception (such as depth
+      and camera estimation) and generation are either handled by separate one-way pipelines or bolted together from
+      unaligned single-modality spaces. In this work, we introduce <b>WorldLatent</b>, a framework that formulates a
+      unified 4D latent space as a common protocol for both world perception and generation. Rather than relying on
+      fragmented, task-specific models or stacked single-modality representations, our framework proposes a multimodal
+      VAE architecture that compresses and fuses complex 4D visual appearance, geometry, and dynamics into a single
+      structured latent representation. Within this formulation, perception and generation operate as complementary
+      denoising processes over the same latent space, enabling one generative model to learn both capabilities
+      simultaneously within a single training loop. Experiments across representative 4D benchmarks verify that our fused
+      latent protocol achieves specialist-level zero-shot 4D perception, coherent 4D generation, and controllable editing
+      from a single model. By demonstrating that diverse 4D tasks can be seamlessly unified under a shared
+      representational protocol, our work provides a scalable foundation for general-purpose 4D spatial intelligence.
+    </p>
+  </section>
+
+  <!-- ===================================================== METHOD -->
+  <section id="method">
+    <h2>Method</h2>
+    <p class="lead">
+      WorldLatent is trained in two stages. <strong>(a)</strong> A multimodal VAE (WorldVAE) encodes RGB video, depth
+      and camera rays (Pl&uuml;cker ray directions and moments) with modality-specific encoders and fuses them with a
+      DPT into a single latent <i>z</i><sub>4d</sub>, which has the same number of tokens as an RGB-only video VAE; four
+      decoders reconstruct every modality from it. <strong>(b)</strong> With WorldVAE frozen, one diffusion model learns
+      to generate the full <i>z</i><sub>4d</sub> from any subset of modalities: an RGB video for 4D perception, text alone
+      for text-to-4D generation, and depth plus text for 4D editing, all in a single multi-task training loop.
+    </p>
+    <figure class="paper-fig">
+      <img src="static/images/fig2_pipeline.jpg" width="1974" height="571" loading="lazy"
+           alt="WorldLatent training pipeline. (a) RGB video, depth maps, ray directions and ray moments are encoded by E1 to E4, fused by a DPT into the latent z4d, and decoded by D1 to D4. (b) A unified diffusion model takes Gaussian noise, a partial or empty modality condition and a text prompt, and generates the full z4d.">
+    </figure>
+  </section>
+
+  <!-- ===================================================== RESULTS OVERVIEW -->
+  <section id="results">
+    <h2>Video Results</h2>
+    <p class="lead" style="margin-bottom:0">
+      All results come from one WorldLatent-14B model, which generates 17-frame 4D sequences at
+      512&nbsp;&times;&nbsp;512 resolution across RGB, depth and Pl&uuml;cker ray maps (camera).
+    </p>
+    <div class="tasks">
+      <a class="task" href="#perception">
+        <span class="k">01</span>
+        <h3>4D Perception</h3>
+        <p>Video depth compared against 10 baselines on KITTI, Sintel, Bonn and ScanNet.</p>
+        <p class="io">RGB video &rarr; depth, camera, 3D geometry</p>
+      </a>
+      <a class="task" href="#rerender">
+        <span class="k">02</span>
+        <h3>Depth-conditioned Re-rendering</h3>
+        <p>Our estimated depth plus a new text prompt changes a video&rsquo;s appearance but keeps its geometry and motion.</p>
+        <p class="io">RGB video + text &rarr; re-rendered video</p>
+      </a>
+      <a class="task" href="#generation">
+        <span class="k">03</span>
+        <h3>Text-to-4D Generation</h3>
+        <p>From a text prompt alone, the model generates the RGB video, its depth maps and camera trajectory.</p>
+        <p class="io">Text &rarr; RGB, depth, camera, 3D geometry</p>
+      </a>
+      <a class="task" href="#decomposition">
+        <span class="k">04</span>
+        <h3>Latent Decomposition</h3>
+        <p>Appearance changes with the text prompt while the geometry-and-camera part of the latent stays fixed.</p>
+        <p class="io">Same depth + new prompts &rarr; latent projections</p>
+      </a>
+    </div>
+    <p class="hint">
+      Videos in each example start together and stay in sync, and only the examples on screen play.
+      Use <b>Speed</b> in the bar above to slow playback, and click any video to view it larger.
+    </p>
+  </section>
+
+  <!-- ===================================================== 1. PERCEPTION -->
+  <section id="perception" data-render="perception">
+    <div class="sec-head">
+      <span class="sec-num">01</span>
+      <h2>4D Perception</h2>
+    </div>
+    <p class="lead">
+      Qualitative video depth comparison on KITTI, Sintel, Bonn and ScanNet.
+      Panels, from left to right and top to bottom: input RGB, ground-truth depth, <strong>WorldLatent-14B (Ours)</strong>,
+      DA3-Giant (Teacher), VGGT-1B, CUT3R-512, MonST3R, DUSt3R, MASt3R, Video-Depth-Anything-L, DepthCrafter,
+      Marigold-v1.1 and Metric-VDA-Large.
+    </p>
+    <div data-slot="grids"></div>
+
+    <div data-block="ours">
+      <h3 class="sub-head">Beyond depth: camera and 3D geometry</h3>
+      <p class="lead">
+        Monocular 4D perception also estimates camera poses, so each input video can be lifted to a
+        3D point cloud with its camera trajectory.
+      </p>
+      <div data-slot="ours"></div>
+    </div>
+  </section>
+
+  <!-- ===================================================== 2. RE-RENDERING -->
+  <section id="rerender" data-render="rerender">
+    <div class="sec-head">
+      <span class="sec-num">02</span>
+      <h2>Depth-conditioned 4D Re-rendering</h2>
+    </div>
+    <p class="lead">
+      Using a single WorldLatent-14B checkpoint, we first perform monocular 4D perception on each input RGB video
+      to estimate dense depth and camera poses (top row). We then condition on the predicted depth together with new
+      text prompts to synthesize geometrically consistent, appearance-edited videos (bottom row). The full text prompts are given below each result.
+    </p>
+    <div data-slot="examples"></div>
+  </section>
+
+  <!-- ===================================================== 3. GENERATION -->
+  <section id="generation" data-render="generation">
+    <div class="sec-head">
+      <span class="sec-num">03</span>
+      <h2>Text-to-4D Generation</h2>
+    </div>
+    <p class="lead">
+      Given only a text prompt, our model generates the RGB video together with its depth maps and camera
+      trajectory, from which the 3D geometry is recovered.
+    </p>
+    <div data-slot="examples"></div>
+  </section>
+
+  <!-- ===================================================== 4. DECOMPOSITION -->
+  <section id="decomposition" data-render="decomposition">
+    <div class="sec-head">
+      <span class="sec-num">04</span>
+      <h2>Linear Subspace Decomposition of WorldLatent</h2>
+    </div>
+    <p class="lead">
+      We decompose the latent <i>z</i><sub>4d</sub> = &Pi;<sub>&#8741;</sub><i>z</i><sub>4d</sub> + &Pi;<sub>&perp;</sub><i>z</i><sub>4d</sub>
+      into a 16-D appearance subspace (&Pi;<sub>&#8741;</sub>, aligned with RGB) and an orthogonal 16-D
+      geometry-and-camera subspace (&Pi;<sub>&perp;</sub>, encoding depth and Pl&uuml;cker rays).
+      Each column re-renders the same depth sequence with a different text prompt: the appearance projection
+      varies markedly with visual style, whereas the geometry-and-camera projection remains nearly invariant.
+    </p>
+    <div data-slot="examples"></div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    WorldLatent: A Unified 4D Latent Space for World Perception and Generation
+  </div>
+</footer>
+
+<div id="lightbox" hidden></div>
+
+<script src="static/js/content.js"></script>
+<script src="static/js/page.js"></script>
+</body>
+</html>
