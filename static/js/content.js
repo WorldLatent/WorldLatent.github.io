@@ -30,6 +30,11 @@ window.WL_CONTENT = {
    *
    * `ours`: examples shown as a row of separate clips (any number of clips).
    *   Set ours: true on a clip to highlight its label.
+   *
+   * `viewer`: the interactive 3D viewer shown after these examples, with a row of
+   *   thumbnails to pick the scene (`zoom` > 1 starts closer than the automatic framing).
+   *   Its data file is made by tools/make_viewer_data.py from a perception
+   *   export bundle (manifest.json + points.bin + img/).
    * ---------------------------------------------------------------------- */
   perception: {
     datasets: [
@@ -71,6 +76,24 @@ window.WL_CONTENT = {
         ],
       },
     ],
+
+    // Interactive 3D viewer below the examples: one thumbnail per scene, first one opens by default.
+    // Each scene folder (scene.js, thumb.jpg, img/) is made by tools/make_viewer_data.py.
+    viewer: {
+      title: "Interactive 3D viewer",
+      caption: "Our per-frame point clouds and estimated camera trajectories, each from a single input video. Pick a scene below.",
+      scenes: [
+        { dataset: "KITTI",     name: "Driving",         title: "KITTI: validation sequence 06", src: "static/viewer/kitti_seq06/scene.js",           thumb: "static/viewer/kitti_seq06/thumb.jpg" },
+        { dataset: "EgoDex",    name: "Cloth folding",   title: "EgoDex: cloth folding",         src: "static/viewer/egodex_cloth_folding/scene.js", thumb: "static/viewer/egodex_cloth_folding/thumb.jpg" },
+        { dataset: "DROID",     name: "Placing a block", title: "DROID: placing a block",        src: "static/viewer/droid_block/scene.js",          thumb: "static/viewer/droid_block/thumb.jpg" },
+        { dataset: "Bonn",      name: "Person tracking", title: "Bonn: person tracking",         src: "static/viewer/bonn_person_tracking/scene.js", thumb: "static/viewer/bonn_person_tracking/thumb.jpg" },
+        { dataset: "Bonn",      name: "Two people",      title: "Bonn: two people",              src: "static/viewer/bonn_two_people/scene.js",      thumb: "static/viewer/bonn_two_people/thumb.jpg" },
+        { dataset: "Ego-Exo4D", name: "Cooking",         title: "Ego-Exo4D: cooking",            src: "static/viewer/egoexo4d_cooking/scene.js",     thumb: "static/viewer/egoexo4d_cooking/thumb.jpg" },
+        { dataset: "HOI4D",     name: "Toy car",         title: "HOI4D: toy car",                src: "static/viewer/hoi4d_toy_car/scene.js",        thumb: "static/viewer/hoi4d_toy_car/thumb.jpg" },
+        { dataset: "DROID",     name: "Robot pouring",   title: "DROID: robot pouring",          src: "static/viewer/droid_pouring/scene.js",        thumb: "static/viewer/droid_pouring/thumb.jpg" },
+        { dataset: "Ego-Exo4D", name: "Bike repair",     title: "Ego-Exo4D: bike repair",        src: "static/viewer/egoexo4d_bike_repair/scene.js", thumb: "static/viewer/egoexo4d_bike_repair/thumb.jpg" },
+      ],
+    },
   },
 
   /* ------------------------------------------------------------------------
@@ -222,6 +245,11 @@ window.WL_CONTENT = {
    *
    * Each example: one text prompt and the three generated outputs.
    * Copy a block, point it at a new folder, paste the prompt.
+   *
+   * `viewer`: the interactive 3D viewer after the examples (same as in
+   *   perception). A scene whose `title` equals an example's title shows that
+   *   example's text prompt below the viewer. Data folders are made by
+   *   tools/make_viewer_data.py from the text-to-4D export bundles.
    * ---------------------------------------------------------------------- */
   generation: {
     examples: [
@@ -242,13 +270,6 @@ window.WL_CONTENT = {
       },
 
       /* ---- arXiv appendix, Fig. 10 ---- */
-      {
-        title: "Riverside jogger",
-        prompt: `Along a wide stone riverside promenade with a metal railing overlooking calm rippling water and distant bridges in warm morning sunlight, an athletic runner in a royal-blue tracksuit and white sneakers jogs smoothly across the foreground. The camera trucks steadily right while dollying forward.`,
-        rgb:      "static/videos/gen/joggler/rgb.mp4",
-        depth:    "static/videos/gen/joggler/depth.mp4",
-        geometry: "static/videos/gen/joggler/geometry.mp4",
-      },
       {
         title: "Lantern-lit street at night",
         prompt: `In a narrow Japanese lantern-lit street at night, pedestrians walk forward along a wet stone walkway lined with warm timber izakaya storefronts and glowing neon signage. In the foreground, a woman in a camel trench coat walks steadily forward beside a man in a charcoal jacket and dark jeans. Bright pink and warm-white illuminated shop panels line the right wall while red paper lanterns glow along the left eaves. The camera dollies steadily forward.`,
@@ -271,6 +292,13 @@ window.WL_CONTENT = {
         geometry: "static/videos/gen/dog/geometry.mp4",
       },
       {
+        title: "Riverside jogger",
+        prompt: `Along a wide stone riverside promenade with a metal railing overlooking calm rippling water and distant bridges in warm morning sunlight, an athletic runner in a royal-blue tracksuit and white sneakers jogs smoothly across the foreground. The camera trucks steadily right while dollying forward.`,
+        rgb:      "static/videos/gen/joggler/rgb.mp4",
+        depth:    "static/videos/gen/joggler/depth.mp4",
+        geometry: "static/videos/gen/joggler/geometry.mp4",
+      },
+      {
         title: "Red sedan by a pine forest",
         prompt: `A crimson-red sedan drives smoothly forward along a sunlit asphalt roadway near a stone park entrance surrounded by tall green pine trees and lush foliage. The vehicle travels steadily down the lane, passing crisp white crosswalk stripes painted on the pavement. Golden afternoon sunlight filters through the overhead pine canopy onto the road and wooden park fencing, casting dappled shadows across the scene. The camera dollies slowly forward.`,
         rgb:      "static/videos/gen/red_car_forest/rgb.mp4",
@@ -285,6 +313,24 @@ window.WL_CONTENT = {
         geometry: "static/videos/gen/waterfall/geometry.mp4",
       },
     ],
+
+    // Interactive 3D viewer below the examples: one thumbnail per generated scene.
+    viewer: {
+      id: "generation-viewer",
+      title: "Interactive 3D viewer",
+      caption: "The generated 4D scenes above as per-frame point clouds with their camera trajectories, lifted from the generated depth and cameras. Pick a scene below.",
+      labels: { frame: "Generated frame", depth: "Generated depth, this frame", trajectory: "Generated camera trajectory", camera: "generated camera" },
+      scenes: [
+        { name: "Musician playing guitar",       title: "Musician playing guitar",       src: "static/viewer/gen/guitar/scene.js",           thumb: "static/viewer/gen/guitar/thumb.jpg" },
+        { name: "Coral reef with tropical fish", title: "Coral reef with tropical fish", src: "static/viewer/gen/coral_reef/scene.js",       thumb: "static/viewer/gen/coral_reef/thumb.jpg" },
+        { name: "Lantern-lit street at night",   title: "Lantern-lit street at night",   src: "static/viewer/gen/lantern_street/scene.js",   thumb: "static/viewer/gen/lantern_street/thumb.jpg" },
+        { name: "Rainy avenue",                  title: "Rainy avenue",                  src: "static/viewer/gen/rainy_avenue/scene.js",     thumb: "static/viewer/gen/rainy_avenue/thumb.jpg" },
+        { name: "Golden retriever puppy",        title: "Golden retriever puppy",        src: "static/viewer/gen/golden_retriever/scene.js", thumb: "static/viewer/gen/golden_retriever/thumb.jpg" },
+        { name: "Riverside jogger",              title: "Riverside jogger",              src: "static/viewer/gen/jogger/scene.js",           thumb: "static/viewer/gen/jogger/thumb.jpg" },
+        { name: "Red sedan by a pine forest",    title: "Red sedan by a pine forest",    src: "static/viewer/gen/red_sedan/scene.js",        thumb: "static/viewer/gen/red_sedan/thumb.jpg" },
+        { name: "Mountain waterfall",            title: "Mountain waterfall",            src: "static/viewer/gen/waterfall/scene.js",        thumb: "static/viewer/gen/waterfall/thumb.jpg" },
+      ],
+    },
   },
 
   /* ------------------------------------------------------------------------

@@ -7,12 +7,15 @@
  *    restart together when the longest one ends, so frames stay aligned.
  *  - Only groups on screen play (IntersectionObserver); off-screen ones pause.
  *  - Global speed / pause controls in the toolbar; click a video to enlarge.
+ *  - perception.viewer / generation.viewer (or an example's `viewer`) add the
+ *    interactive 3D viewer (static/js/viewer3d.js), which follows the toolbar's
+ *    speed and pause.
  * ========================================================================== */
 (function () {
   'use strict';
 
   var C = window.WL_CONTENT || {};
-  var state = { speed: 1, paused: false, groups: [] };
+  var state = { speed: 1, paused: false, groups: [], viewers: [] };
 
   /* ------------------------------------------------------------ DOM helper */
   function h(tag, attrs) {
@@ -122,13 +125,39 @@
     frame.appendChild(h('div', { class: 'missing' }, h('strong', null, 'Video not found'), h('code', null, src || '(no src)')));
   }
 
+  // inline: inside an example card (title row + viewer); otherwise just the viewer
+  function viewer3d(v, inline) {
+    var box = h('div', { class: inline ? 'v3d-wrap' : 'v3d-solo' },
+      inline ? h('div', { class: 'v3d-title' },
+        h('h4', null, v.title || 'Interactive 3D viewer'),
+        v.caption ? h('span', null, v.caption) : null) : null);
+    var slot = h('div');
+    box.appendChild(slot);
+    if (window.WLViewer) {
+      var api = window.WLViewer.mount(slot, { scenes: v.scenes, src: v.src, zoom: v.zoom, initial: v.initial, labels: v.labels });
+      api.setSpeed(state.speed);
+      state.viewers.push(api);
+    }
+    return box;
+  }
+
+  // a section's own viewer card (title, caption, thumbnails + viewer)
+  function viewerCard(V) {
+    return card({ title: V.title || 'Interactive 3D viewer', cls: 'viewer-card', id: V.id }, function () {
+      return [
+        V.caption ? h('p', { class: 'v3d-caption', html: V.caption }) : null,
+        viewer3d(V, false),
+      ];
+    });
+  }
+
   function tags(list) {
     return list.filter(Boolean).map(function (t) { return h('span', { class: 'tag' }, t); });
   }
 
   function card(opts, build) {
     var g = makeGroup(opts.rate);
-    var el = h('article', { class: 'example' + (opts.cls ? ' ' + opts.cls : '') });
+    var el = h('article', { class: 'example' + (opts.cls ? ' ' + opts.cls : ''), id: opts.id });
     if (opts.title || (opts.tags && opts.tags.length)) {
       el.appendChild(h('header', { class: 'example-head' },
         opts.title ? h('h3', null, opts.title) : null,
@@ -177,11 +206,15 @@
     ours.forEach(function (ex) {
       oursSlot.appendChild(card({ title: ex.title, tags: [ex.figure], rate: ex.rate, note: ex.note }, function (g) {
         var n = Math.min(ex.clips.length, 4);
-        return h('div', { class: 'row cols-' + n }, ex.clips.map(function (c) {
-          return clip({ label: c.label, src: c.src, ours: c.ours, caption: ex.title + ': ' + c.label, rate: c.rate }, g);
-        }));
+        return [
+          h('div', { class: 'row cols-' + n }, ex.clips.map(function (c) {
+            return clip({ label: c.label, src: c.src, ours: c.ours, caption: ex.title + ': ' + c.label, rate: c.rate }, g);
+          })),
+          ex.viewer ? viewer3d(ex.viewer, true) : null,
+        ];
       }));
     });
+    if (P.viewer && (P.viewer.scenes || P.viewer.src)) oursSlot.appendChild(viewerCard(P.viewer));
   }
 
   function renderRerender(root) {
@@ -210,8 +243,9 @@
   }
 
   function renderGeneration(root) {
+    var G = C.generation || {};
     var slot = root.querySelector('[data-slot="examples"]');
-    ((C.generation || {}).examples || []).forEach(function (ex) {
+    (G.examples || []).forEach(function (ex) {
       slot.appendChild(card({ title: ex.title, tags: [ex.figure], rate: ex.rate, note: ex.note, cls: 'gen' }, function (g) {
         var cap = function (s) { return ex.title + ': ' + s; };
         return h('div', { class: 'gen-body' },
@@ -222,6 +256,15 @@
             clip({ label: '3D geometry + camera', src: ex.geometry, caption: cap('3D geometry + camera') }, g)));
       }));
     });
+    if (G.viewer && (G.viewer.scenes || G.viewer.src)) {
+      // each scene shows the text prompt of the example with the same title
+      (G.viewer.scenes || []).forEach(function (sc) {
+        if (sc.prompt) return;
+        var ex = (G.examples || []).filter(function (e) { return e.title === sc.title; })[0];
+        if (ex) sc.prompt = ex.prompt;
+      });
+      slot.appendChild(viewerCard(G.viewer));
+    }
   }
 
   function renderDecomposition(root) {
@@ -255,6 +298,7 @@
         state.speed = parseFloat(b.getAttribute('data-speed'));
         Array.prototype.forEach.call(speedBtns, function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
         state.groups.forEach(function (g) { g.videos.forEach(applyRate); });
+        state.viewers.forEach(function (v) { v.setSpeed(state.speed); });
         var lb = document.querySelector('#lightbox video');
         if (lb) applyRate(lb);
       });
@@ -267,6 +311,7 @@
       state.groups.forEach(function (g) {
         if (state.paused) pauseGroup(g); else if (g.visible) playGroup(g);
       });
+      state.viewers.forEach(function (v) { v.setPaused(state.paused); });
     });
   }
 
