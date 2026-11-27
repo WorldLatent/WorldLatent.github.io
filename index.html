@@ -241,6 +241,15 @@
     body.lb-open { overflow: hidden; }
 
     /* ---------- footer */
+    /* ---------- BibTeX */
+    .bibtex { position: relative; margin: 16px 0 0; }
+    .bibtex pre {
+      margin: 0; padding: 16px 92px 16px 18px; overflow-x: auto; white-space: pre;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 10px; color: var(--text);
+      font: 13.5px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+    .bibtex .copy-btn { position: absolute; top: 10px; right: 10px; min-width: 72px; }
+
     footer { margin-top: 30px; padding: 28px 0 40px; border-top: 1px solid var(--line); font-size: 13px; color: var(--faint); text-align: center; }
 
     @media (max-width: 1100px) {
@@ -324,6 +333,9 @@
       .affil img.google { height: 22px; }
       .toolbar nav { display: none; }
       .toolbar .wrap { justify-content: flex-end; }
+      .bibtex { display: flex; flex-direction: column; }
+      .bibtex .copy-btn { position: static; order: -1; align-self: flex-end; margin: 0 0 8px; }
+      .bibtex pre { padding: 14px; font-size: 12.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
       .example { padding: 14px; }
       .row.cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .row.centered > * { flex-basis: calc((100% - 14px) / 2); }
@@ -384,6 +396,7 @@
       <a href="#rerender">Re-rendering</a>
       <a href="#generation">Generation</a>
       <a href="#decomposition">Decomposition</a>
+      <a href="#bibtex">BibTeX</a>
     </nav>
     <div class="controls">
       <span class="label">Speed</span>
@@ -544,6 +557,21 @@
       varies markedly with visual style, whereas the geometry-and-camera projection remains nearly invariant.
     </p>
     <div data-slot="examples"></div>
+  </section>
+
+  <!-- ===================================================== BIBTEX -->
+  <section id="bibtex">
+    <h2>BibTeX</h2>
+    <p class="lead">If you find WorldLatent useful in your research, please cite our paper:</p>
+    <div class="bibtex">
+      <pre><code id="bibtex-code">@article{chen2026worldlatent,
+  title={WorldLatent: A Unified 4D Latent Space for World Perception and Generation},
+  author={Chen, Jingxi and Chen, Yujia and Fermuller, Cornelia and Aloimonos, Yiannis and Chu, Wen-Sheng and Tran, Du},
+  journal={arXiv preprint arXiv:2611.31209},
+  year={2026}
+}</code></pre>
+      <button type="button" class="btn copy-btn" data-copy="bibtex-code" aria-live="polite">Copy</button>
+    </div>
   </section>
 
 </main>

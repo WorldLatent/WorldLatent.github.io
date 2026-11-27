@@ -347,6 +347,34 @@
   lb.addEventListener('click', function (e) { if (e.target === lb) closeLightbox(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !lb.hidden) closeLightbox(); });
 
+  /* ------------------------------------------------- copy buttons (BibTeX) */
+  function initCopy() {
+    var mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-copy]'), function (b) {
+      var label = b.textContent, timer = 0;
+      function show(text) {
+        b.textContent = text;
+        clearTimeout(timer);
+        timer = setTimeout(function () { b.textContent = label; }, 1800);
+      }
+      b.addEventListener('click', function () {
+        var src = document.getElementById(b.getAttribute('data-copy'));
+        if (!src) return;
+        function fallback() {           // older browsers, or no clipboard access: select the text
+          var r = document.createRange(), sel = window.getSelection();
+          r.selectNodeContents(src);
+          sel.removeAllRanges(); sel.addRange(r);
+          var ok = false;
+          try { ok = document.execCommand('copy'); } catch (err) {}
+          if (ok) { sel.removeAllRanges(); show('Copied'); } else show(mac ? 'Press \u2318C' : 'Press Ctrl+C');
+        }
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(src.textContent).then(function () { show('Copied'); }, fallback);
+        } else fallback();
+      });
+    });
+  }
+
   /* ----------------------------------------------------------------- boot */
   var renderers = {
     perception: renderPerception, rerender: renderRerender,
@@ -357,4 +385,5 @@
     if (root) renderers[k](root);
   });
   initToolbar();
+  initCopy();
 })();
